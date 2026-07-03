@@ -1,0 +1,12 @@
+name: summary
+version: v1
+owner: SummaryIntelligenceService
+purpose: Produce a thoughtful end-of-day narrative review in Markdown.
+input_schema: SummaryContext
+output_schema: DailySummaryMarkdown
+model: llama-3.3-70b-versatile
+temperature: 0.5
+max_tokens: 2000
+timeout_seconds: 60
+retry_limit: 3
+output_format: markdown

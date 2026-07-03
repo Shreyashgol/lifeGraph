@@ -1,0 +1,12 @@
+name: recommendation
+version: v1
+owner: RecommendationIntelligenceService
+purpose: Convert insights into personalized, evidence-backed recommendations.
+input_schema: RecommendationContext
+output_schema: RecommendationProposal
+model: llama-3.3-70b-versatile
+temperature: 0.3
+max_tokens: 800
+timeout_seconds: 45
+retry_limit: 3
+output_format: json

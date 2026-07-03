@@ -1,0 +1,25 @@
+# LifeGraph backend dependencies (mirrors pyproject.toml).
+# Install:  python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+# See requirements-dev.txt for tooling and tests.
+
+# --- Core (required to start the Phase 1 backend) ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings>=2.3
+python-dotenv>=1.0
+# Guarantees IANA timezone data for UserProfile validation on all platforms.
+tzdata>=2024.1
+# Parses versioned prompt definitions (docs/09 §15).
+pyyaml>=6.0
+
+# --- Database (Neon Postgres + pgvector; SQLite still used for local/tests) ---
+psycopg[binary]>=3.1
+pgvector>=0.2.5
+
+# --- Committed project stack (used from Phase 3 onward) ---
+sqlmodel>=0.0.21
+langgraph>=0.2
+langchain-core>=0.3
+groq>=0.11
+httpx>=0.27

@@ -1,0 +1,12 @@
+name: insight
+version: v1
+owner: InsightIntelligenceService
+purpose: Explain what changed in the user's behaviour, referencing evidence.
+input_schema: InsightContext
+output_schema: InsightProposal
+model: llama-3.3-70b-versatile
+temperature: 0.3
+max_tokens: 800
+timeout_seconds: 45
+retry_limit: 3
+output_format: json

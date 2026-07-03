@@ -1,0 +1,12 @@
+name: behaviour
+version: v1
+owner: BehaviourIntelligenceService
+purpose: Detect behavioural patterns from accumulated history.
+input_schema: BehaviourContext
+output_schema: BehaviourProposal
+model: llama-3.3-70b-versatile
+temperature: 0.2
+max_tokens: 800
+timeout_seconds: 45
+retry_limit: 3
+output_format: json

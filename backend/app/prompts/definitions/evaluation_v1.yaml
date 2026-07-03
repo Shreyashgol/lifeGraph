@@ -1,0 +1,12 @@
+name: evaluation
+version: v1
+owner: EvaluationIntelligenceService
+purpose: Judge a structured proposal produced by another model and decide approve/retry/reject.
+input_schema: EvaluationContext
+output_schema: EvaluationDecision
+model: llama-3.3-70b-versatile
+temperature: 0.0
+max_tokens: 400
+timeout_seconds: 30
+retry_limit: 3
+output_format: json

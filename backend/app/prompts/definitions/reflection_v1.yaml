@@ -1,0 +1,12 @@
+name: reflection
+version: v1
+owner: ReflectionIntelligenceService
+purpose: Validate the reasoning pipeline before completion; never create business data.
+input_schema: ReflectionContext
+output_schema: ReflectionProposal
+model: llama-3.3-70b-versatile
+temperature: 0.0
+max_tokens: 500
+timeout_seconds: 30
+retry_limit: 2
+output_format: json
