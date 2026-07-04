@@ -7,8 +7,8 @@ never committed — see ``.env.example`` for the expected keys.
 
 from __future__ import annotations
 
-from functools import lru_cache
 import json
+from functools import lru_cache
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
