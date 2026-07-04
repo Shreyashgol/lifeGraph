@@ -23,6 +23,16 @@ from app.schemas.summary import SummaryCalendarResponse, SummaryResponse
 
 router = APIRouter(tags=["summary"])
 
+# Substrings that identify a provider rate-limit / quota failure captured in the
+# graph's ``errors``. Groq's 429 payload always carries at least one of these.
+_RATE_LIMIT_MARKERS = ("rate_limit", "rate limit", "429", "too many requests")
+
+
+def _is_rate_limited(errors: list[str]) -> bool:
+    """True when the graph failed because the AI provider rate-limited us."""
+    joined = " ".join(errors).lower()
+    return any(marker in joined for marker in _RATE_LIMIT_MARKERS)
+
 
 @router.post("/summary", response_model=SummaryResponse)
 async def generate_summary(
@@ -45,6 +55,14 @@ async def generate_summary(
     result = await graph.ainvoke(initial)
     state = result_to_state(result)
     if state.daily_summary is None:
+        if _is_rate_limited(state.errors):
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "AI provider daily token limit reached. "
+                    "Please try again later or switch to a higher-limit model."
+                ),
+            )
         raise HTTPException(status_code=502, detail="summary generation failed")
     return SummaryResponse.from_domain(state.daily_summary)
 

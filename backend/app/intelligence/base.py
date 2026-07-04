@@ -20,13 +20,16 @@ from uuid import UUID
 from pydantic import BaseModel, ValidationError
 
 from app.config.logging import get_logger
-from app.intelligence.errors import InvalidLLMResponseError, LLMError
+from app.intelligence.errors import InvalidLLMResponseError, LLMError, LLMRateLimitError
 from app.intelligence.llm_client import LLMClient
 from app.prompts import PromptBuilder
 
 ProposalT = TypeVar("ProposalT", bound=BaseModel)
 
 # Failures worth retrying: transport errors and unparseable/invalid responses.
+# LLMRateLimitError is deliberately excluded — a 429 (per-minute or per-day quota)
+# will not clear within our retry window, so we fail fast instead of burning more
+# requests against an exhausted budget.
 _RETRYABLE = (LLMError, InvalidLLMResponseError, ValidationError, json.JSONDecodeError)
 
 _INSUFFICIENT = "insufficient_context"
@@ -118,6 +121,8 @@ class IntelligenceService:
                     self._logger.info("insufficient_context", extra={"prompt": self.prompt_name})
                     return None
                 return schema.model_validate(data)
+            except LLMRateLimitError:
+                raise  # fail fast: a rate-limit won't clear by retrying now
             except _RETRYABLE as exc:
                 last_error = exc
                 self._logger.warning(
@@ -148,6 +153,8 @@ class IntelligenceService:
                 if not raw.strip():
                     raise InvalidLLMResponseError("empty response")
                 return raw.strip()
+            except LLMRateLimitError:
+                raise  # fail fast: a rate-limit won't clear by retrying now
             except (LLMError, InvalidLLMResponseError) as exc:
                 last_error = exc
                 self._logger.warning(

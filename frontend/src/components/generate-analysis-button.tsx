@@ -32,6 +32,8 @@ export function GenerateAnalysisButton({
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
         setError("Log some activities first, then generate.");
+      } else if (err instanceof ApiError && err.status === 429) {
+        setError("AI daily token limit reached. Try again later or switch to a lighter model.");
       } else if (err instanceof ApiError && err.status === 503) {
         setError("Reasoning engine unavailable — check GROQ_API_KEY.");
       } else {

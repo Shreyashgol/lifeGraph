@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.api.dependencies import get_graph, get_session
+from app.api.dependencies import get_graph, get_session, get_summary_graph_dep
 from app.graph.state import LifeGraphState
 from app.main import create_app
 from app.models import Activity, Memory, MemoryType, Timeline
@@ -139,6 +139,44 @@ def test_seeded_timeline_and_memory(api: TestClient, session: Session) -> None:
     memory = api.get("/memory")
     assert memory.json()["count"] == 1
     assert memory.json()["memories"][0]["type"] == "goal"
+
+
+class _FakeSummaryGraph:
+    """Summary graph stand-in that yields no summary, only the given errors."""
+
+    def __init__(self, errors: list[str]) -> None:
+        self._errors = errors
+
+    async def ainvoke(self, state: LifeGraphState) -> LifeGraphState:
+        return state.model_copy(update={"errors": self._errors})
+
+
+def _seed_timeline(session: Session) -> None:
+    activity = Activity(
+        timestamp=TS, raw_text="x", category="Deep Work", duration=60, confidence=0.9
+    )
+    TimelineRepository(session).create(
+        Timeline(date=TS.date(), activities=[activity], total_duration=60)
+    )
+
+
+def test_summary_rate_limit_returns_429(api: TestClient, session: Session) -> None:
+    _seed_timeline(session)
+    api.app.dependency_overrides[get_summary_graph_dep] = lambda: _FakeSummaryGraph(
+        ["behaviour: Error code: 429 - {'code': 'rate_limit_exceeded'}"]
+    )
+    resp = api.post("/summary", params={"date": TS.date().isoformat()})
+    assert resp.status_code == 429
+    assert "limit" in resp.json()["detail"].lower()
+
+
+def test_summary_generic_failure_returns_502(api: TestClient, session: Session) -> None:
+    _seed_timeline(session)
+    api.app.dependency_overrides[get_summary_graph_dep] = lambda: _FakeSummaryGraph(
+        ["summary: unexpected parsing error"]
+    )
+    resp = api.post("/summary", params={"date": TS.date().isoformat()})
+    assert resp.status_code == 502
 
 
 def test_summary_dates_lists_activity_and_summary_days(

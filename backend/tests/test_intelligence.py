@@ -12,11 +12,12 @@ from app.intelligence import (
     EvaluationIntelligenceService,
     InvalidLLMResponseError,
     LLMClient,
+    LLMRateLimitError,
     LLMTimeoutError,
     MemoryIntelligenceService,
     SummaryIntelligenceService,
 )
-from app.intelligence.proposals import ActivityProposal
+from app.intelligence.proposals import ActivityProposal, BehaviourPatternItem, InsightItem
 from app.models import Activity
 
 TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
@@ -81,6 +82,37 @@ async def test_retry_on_transient_error_then_success() -> None:
     client = FakeLLMClient([LLMTimeoutError("timeout"), '{"category":"c","confidence":0.5}'])
     proposal = await ActivityIntelligenceService(client).reason(activity="x", timestamp=TS)
     assert proposal is not None and proposal.category == "c"
+
+
+def test_int_fields_coerce_floats_from_small_models() -> None:
+    # 8b-class models emit floats (0.8, 3.0) for integer fields; round, don't reject.
+    assert (
+        BehaviourPatternItem.model_validate(
+            {"category": "Focus", "title": "t", "description": "d", "confidence": 0.9, "importance": 0.8}
+        ).importance
+        == 1
+    )
+    assert (
+        InsightItem.model_validate(
+            {"title": "t", "description": "d", "confidence": 0.9, "importance": 3.0}
+        ).importance
+        == 3
+    )
+    assert (
+        ActivityProposal.model_validate(
+            {"category": "c", "confidence": 0.5, "duration": 120.0}
+        ).duration
+        == 120
+    )
+
+
+async def test_rate_limit_fails_fast_without_retry() -> None:
+    # A 429 (per-minute or per-day quota) won't clear within the retry window,
+    # so it must propagate immediately after a single call — not burn 3 attempts.
+    client = FakeLLMClient([LLMRateLimitError("429 tokens per day"), '{"category":"c","confidence":0.5}'])
+    with pytest.raises(LLMRateLimitError):
+        await ActivityIntelligenceService(client).reason(activity="x", timestamp=TS)
+    assert len(client.calls) == 1
 
 
 async def test_schema_validation_failure_triggers_retry() -> None:
