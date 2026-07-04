@@ -8,8 +8,9 @@ never committed — see ``.env.example`` for the expected keys.
 from __future__ import annotations
 
 from functools import lru_cache
+import json
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,10 +41,26 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_prefix: str = "/api"
-    cors_origins: list[str] = Field(
+    cors_origins: list[str] | str = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"],
         description="Origins permitted to call the API (the Vite frontend on 5173).",
     )
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed]
+                except json.JSONDecodeError:
+                    pass
+            return [item.strip() for item in v.split(",") if item.strip()]
+        elif isinstance(v, list):
+            return [str(item).strip() for item in v]
+        return v
 
     # --- Persistence -------------------------------------------------------
     # SQLite for Version 1; migrates to PostgreSQL later with no business-layer
