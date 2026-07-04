@@ -53,8 +53,9 @@ class ReflectionNode:
         if proposal is not None and not proposal.approved:
             errors = [*errors, "reflection: pipeline not approved"]
 
+        approved = bool(proposal and proposal.approved)
         metadata = state.execution_metadata.model_copy(
-            update={"validation_results": {"reflection_approved": bool(proposal and proposal.approved)}}
+            update={"validation_results": {"reflection_approved": approved}}
         )
         return {
             "confidence_scores": scores,

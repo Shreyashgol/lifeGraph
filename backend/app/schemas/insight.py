@@ -17,7 +17,7 @@ class InsightView(BaseModel):
     importance: int
 
     @classmethod
-    def from_domain(cls, insight: Insight) -> "InsightView":
+    def from_domain(cls, insight: Insight) -> InsightView:
         return cls(
             id=insight.id,
             title=insight.title,

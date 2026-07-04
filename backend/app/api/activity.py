@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -27,7 +27,7 @@ async def log_activity(
     """Understand an activity, evolve memory/timeline, and return the result."""
     user = UserRepository(session).get_first()
     memories = MemoryRepository(session).list_active()
-    timestamp = payload.timestamp or datetime.now(timezone.utc)
+    timestamp = payload.timestamp or datetime.now(UTC)
     timeline = TimelineRepository(session).get_by_date(timestamp.date())
 
     initial = LifeGraphState(

@@ -25,7 +25,7 @@ class Session(DomainModel):
     focus_score: float = Field(ge=0.0, le=1.0)
 
     @model_validator(mode="after")
-    def _end_after_start(self) -> "Session":
+    def _end_after_start(self) -> Session:
         """A session must end after it starts."""
         if self.end_time <= self.start_time:
             raise ValueError("end_time must be after start_time")

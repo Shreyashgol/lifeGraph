@@ -6,10 +6,10 @@ examples in the canonical data contract (``docs/07_DATA_MODELS.md``).
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class MemoryType(str, Enum):
+class MemoryType(StrEnum):
     """Category of a semantic memory (docs/07 §9).
 
     Version 1 supports the seven memory domains enumerated by the canonical data
@@ -26,7 +26,7 @@ class MemoryType(str, Enum):
     INTEREST = "interest"
 
 
-class MemoryStatus(str, Enum):
+class MemoryStatus(StrEnum):
     """Lifecycle state of a memory (docs/10 §10).
 
     Only ``ACTIVE`` memories participate in reasoning; ``CANDIDATE`` memories are
@@ -38,7 +38,7 @@ class MemoryStatus(str, Enum):
     ARCHIVED = "archived"
 
 
-class BehaviourCategory(str, Enum):
+class BehaviourCategory(StrEnum):
     """Behavioural pattern category (docs/07 §10)."""
 
     PRODUCTIVITY = "Productivity"
@@ -51,7 +51,7 @@ class BehaviourCategory(str, Enum):
     WORK_STYLE = "Work Style"
 
 
-class TrendDirection(str, Enum):
+class TrendDirection(StrEnum):
     """Direction of a behavioural trend (docs/07 §10)."""
 
     INCREASING = "Increasing"
@@ -60,7 +60,7 @@ class TrendDirection(str, Enum):
     UNKNOWN = "Unknown"
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     """Recommendation priority (docs/07 §12)."""
 
     CRITICAL = "Critical"

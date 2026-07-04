@@ -16,6 +16,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import get_settings
 
+
 def _normalize_db_url(url: str) -> str:
     """Select the installed psycopg v3 driver for Postgres URLs.
 

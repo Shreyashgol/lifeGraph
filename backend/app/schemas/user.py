@@ -35,7 +35,7 @@ class ProfileResponse(BaseModel):
     preferences: dict[str, Any]
 
     @classmethod
-    def from_domain(cls, profile: UserProfile) -> "ProfileResponse":
+    def from_domain(cls, profile: UserProfile) -> ProfileResponse:
         return cls(
             id=profile.id,
             name=profile.name,

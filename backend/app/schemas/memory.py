@@ -20,7 +20,7 @@ class MemoryView(BaseModel):
     status: str
 
     @classmethod
-    def from_domain(cls, memory: Memory) -> "MemoryView":
+    def from_domain(cls, memory: Memory) -> MemoryView:
         return cls(
             id=memory.id,
             type=memory.type.value,

@@ -47,6 +47,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# B008 flags function calls in argument defaults, but `Depends(...)`/`Query(...)`
+# in defaults is the idiomatic FastAPI dependency-injection pattern, not a bug.
+ignore = ["B008"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

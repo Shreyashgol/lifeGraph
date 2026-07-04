@@ -7,7 +7,7 @@ result. ``GET /summary`` reads the most recent (or a given day's) summary.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -31,7 +31,7 @@ async def generate_summary(
     graph: Any = Depends(get_summary_graph_dep),
 ) -> SummaryResponse:
     """Generate (and persist) the day's summary, insights, and recommendations."""
-    target = day or datetime.now(timezone.utc).date()
+    target = day or datetime.now(UTC).date()
     timeline = TimelineRepository(session).get_by_date(target)
     if timeline is None or not timeline.activities:
         raise HTTPException(status_code=400, detail=f"no activities on {target} to summarize")

@@ -10,16 +10,14 @@ Repositories own persistence only — no AI reasoning, no business rules.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import ClassVar, Generic, TypeVar
+from typing import ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel
 from sqlmodel import Session, SQLModel, select
 
-DomainT = TypeVar("DomainT", bound=BaseModel)
 
-
-class BaseRepository(ABC, Generic[DomainT]):
+class BaseRepository[DomainT: BaseModel](ABC):
     """CRUD repository for entities keyed by a string primary key."""
 
     table_cls: ClassVar[type[SQLModel]]

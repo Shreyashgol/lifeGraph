@@ -67,7 +67,9 @@ def _resolve(builder: Any) -> Any:
     try:
         return builder()
     except (IntelligenceError, ImportError) as exc:
-        raise HTTPException(status_code=503, detail=f"reasoning engine unavailable: {exc}")
+        raise HTTPException(
+            status_code=503, detail=f"reasoning engine unavailable: {exc}"
+        ) from exc
 
 
 def get_graph() -> Any:

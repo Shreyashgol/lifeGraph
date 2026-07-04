@@ -7,7 +7,7 @@ injected as corrective feedback and the retry count is carried forward. Reads
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.config.logging import get_logger
 from app.graph.state import LifeGraphState
@@ -29,7 +29,7 @@ class ActivityNode:
     async def __call__(self, state: LifeGraphState) -> dict:
         previous = state.structured_activity
         retry_count = previous.retry_count if previous else 0
-        timestamp = previous.timestamp if previous else datetime.now(timezone.utc)
+        timestamp = previous.timestamp if previous else datetime.now(UTC)
 
         context = dict(state.relevant_context)
         if previous is not None and retry_count > 0 and previous.evaluation_reason:

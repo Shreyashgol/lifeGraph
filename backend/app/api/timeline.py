@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
@@ -21,7 +21,7 @@ def get_timeline(
 ) -> TimelineResponse:
     # Activities are timestamped in UTC and keyed by their UTC date, so "today"
     # defaults to the UTC date to stay consistent (and not appear empty).
-    target = day or datetime.now(timezone.utc).date()
+    target = day or datetime.now(UTC).date()
     timeline = TimelineRepository(session).get_by_date(target)
     return (
         TimelineResponse.from_domain(timeline)

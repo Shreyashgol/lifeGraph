@@ -37,7 +37,7 @@ class SummaryResponse(BaseModel):
     tomorrow_focus: str
 
     @classmethod
-    def from_domain(cls, summary: DailySummary) -> "SummaryResponse":
+    def from_domain(cls, summary: DailySummary) -> SummaryResponse:
         return cls(
             id=summary.id,
             date=summary.date,

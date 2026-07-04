@@ -34,7 +34,7 @@ class ActivityView(BaseModel):
     validated: bool
 
     @classmethod
-    def from_domain(cls, activity: Activity) -> "ActivityView":
+    def from_domain(cls, activity: Activity) -> ActivityView:
         return cls(
             id=activity.id,
             timestamp=activity.timestamp,

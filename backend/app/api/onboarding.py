@@ -38,7 +38,7 @@ def onboard(
         raise HTTPException(
             status_code=422,
             detail=[{"loc": e["loc"], "msg": e["msg"], "type": e["type"]} for e in exc.errors()],
-        )
+        ) from exc
 
     repo = UserRepository(session)
     existing = repo.get_first()

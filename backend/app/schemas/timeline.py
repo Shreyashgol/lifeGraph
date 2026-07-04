@@ -20,7 +20,7 @@ class TimelineResponse(BaseModel):
     session_count: int
 
     @classmethod
-    def from_domain(cls, timeline: Timeline) -> "TimelineResponse":
+    def from_domain(cls, timeline: Timeline) -> TimelineResponse:
         return cls(
             date=timeline.date,
             activities=[ActivityView.from_domain(a) for a in timeline.activities],
@@ -30,7 +30,7 @@ class TimelineResponse(BaseModel):
         )
 
     @classmethod
-    def empty(cls, day: date_type) -> "TimelineResponse":
+    def empty(cls, day: date_type) -> TimelineResponse:
         return cls(
             date=day,
             activities=[],

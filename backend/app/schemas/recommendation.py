@@ -18,7 +18,7 @@ class RecommendationView(BaseModel):
     confidence: float
 
     @classmethod
-    def from_domain(cls, rec: Recommendation) -> "RecommendationView":
+    def from_domain(cls, rec: Recommendation) -> RecommendationView:
         return cls(
             id=rec.id,
             title=rec.title,
