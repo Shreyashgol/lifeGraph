@@ -16,6 +16,16 @@ and personalized recommendations instead of raw activity statistics.
 
 > **The LLM reasons. The application decides.**
 
+## Live Demo
+
+| | URL |
+| --- | --- |
+| 🌐 **App (frontend)** | https://life-graph-one.vercel.app |
+| ⚙️ **API (backend)** | https://lifegraph.onrender.com · [`/health`](https://lifegraph.onrender.com/health) · [`/docs`](https://lifegraph.onrender.com/docs) |
+
+> ℹ️ The backend runs on Render's free tier, which sleeps after ~15 min of
+> inactivity — the first request may take 30–60s to cold-start, then it's fast.
+
 ---
 
 ## The Problem
