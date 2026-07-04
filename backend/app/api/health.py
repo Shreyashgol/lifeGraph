@@ -20,6 +20,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health", response_model=HealthResponse, summary="Service health")
+@router.head("/health", include_in_schema=False)
 async def health(settings: Annotated[Settings, Depends(get_settings)]) -> HealthResponse:
     """Report that the service is running and echo basic build metadata."""
     return HealthResponse(

@@ -22,3 +22,9 @@ def test_health_matches_response_schema(client: TestClient) -> None:
     body = client.get("/health").json()
 
     assert set(body.keys()) == {"status", "app", "version", "environment"}
+
+
+def test_health_supports_head(client: TestClient) -> None:
+    response = client.head("/health")
+    assert response.status_code == 200
+    assert response.content == b""
