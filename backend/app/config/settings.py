@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -41,7 +42,12 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_prefix: str = "/api"
-    cors_origins: list[str] | str = Field(
+    # NoDecode: pydantic-settings JSON-decodes list-typed fields at the env
+    # source *before* validators run, so a bare-URL value (e.g.
+    # ``CORS_ORIGINS=https://app.vercel.app``) would raise a SettingsError on
+    # startup. NoDecode hands the raw string to ``assemble_cors_origins`` below,
+    # which accepts a JSON array, a comma-separated list, or a single origin.
+    cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"],
         description="Origins permitted to call the API (the Vite frontend on 5173).",
     )
