@@ -57,6 +57,22 @@ class TimelineRepository:
         statement = select(TimelineTable).order_by(TimelineTable.date)
         return [self._to_domain(row) for row in self.session.exec(statement).all()]
 
+    def list_dates(
+        self, *, start: date | None = None, end: date | None = None
+    ) -> list[date]:
+        """Return the days that have a timeline (i.e. logged activity), ascending.
+
+        Loads only the date column so the calendar can mark which days can be
+        summarized without materializing every day's activities.
+        """
+        statement = select(TimelineTable.date)
+        if start is not None:
+            statement = statement.where(TimelineTable.date >= start)
+        if end is not None:
+            statement = statement.where(TimelineTable.date <= end)
+        statement = statement.order_by(TimelineTable.date)
+        return list(self.session.exec(statement).all())
+
     def delete(self, day: date) -> bool:
         row = self.session.get(TimelineTable, day)
         if row is None:

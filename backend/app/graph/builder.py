@@ -1,16 +1,20 @@
-"""Graph builder: wiring only, no business logic (docs/06 §37 Rule 8).
+"""Graph builders: wiring only, no business logic (docs/06 §37 Rule 8).
 
-Constructs the intelligence services, validators, and nodes, then assembles the
-LangGraph ``StateGraph``. Dependencies (the LLM client and the persistence
-session factory) are injected so the graph is testable with fakes.
+LifeGraph runs **two** workflows over the shared ``LifeGraphState`` (docs/06 §27):
 
-Execution order (docs/12 Phase 6 + the Evaluation addition):
+- **Activity graph** — runs on every ``POST /activity`` (the ingest path).
+  Cheap: understand → judge → context → memory → timeline → persist.
 
-    START -> activity -> evaluation -> context -> memory -> timeline ->
-    behaviour -> insight -> recommendation -> summary -> reflection ->
-    persist -> END
+      START -> activity -> evaluation -> context -> memory -> timeline -> persist -> END
+      (with a conditional retry edge evaluation -> activity, max 2)
 
-with a conditional retry edge evaluation -> activity (max 2).
+- **Summary graph** — runs **on demand** (``POST /summary``). Expensive analysis
+  over the accumulated day, so it is not paid on every activity.
+
+      START -> behaviour -> insight -> recommendation -> summary -> reflection -> persist -> END
+
+Dependencies (the LLM client and the persistence session factory) are injected so
+the graphs are testable with fakes.
 """
 
 from __future__ import annotations
@@ -49,17 +53,11 @@ from app.validators.activity_validator import ActivityValidator
 from app.validators.memory_validator import MemoryValidator
 
 
-def build_graph(
-    *,
-    llm_client: LLMClient,
-    session_factory: Callable[[], Session],
-    checkpointer: Any | None = None,
-) -> Any:
-    """Assemble and compile the LifeGraph reasoning graph."""
-    # Lazy import keeps the module importable without langgraph installed.
-    from langgraph.graph import END, START, StateGraph
-
-    nodes = {
+def _build_nodes(
+    llm_client: LLMClient, session_factory: Callable[[], Session]
+) -> dict[str, Any]:
+    """Construct every node (nodes are cheap — they only hold references)."""
+    return {
         "activity": ActivityNode(ActivityIntelligenceService(llm_client), ActivityValidator()),
         "evaluation": EvaluationNode(EvaluationIntelligenceService(llm_client)),
         "context": ContextNode(),
@@ -73,9 +71,20 @@ def build_graph(
         "persist": PersistNode(session_factory),
     }
 
+
+def build_activity_graph(
+    *,
+    llm_client: LLMClient,
+    session_factory: Callable[[], Session],
+    checkpointer: Any | None = None,
+) -> Any:
+    """Compile the per-activity ingest graph."""
+    from langgraph.graph import END, START, StateGraph
+
+    nodes = _build_nodes(llm_client, session_factory)
     builder = StateGraph(LifeGraphState)
-    for name, node in nodes.items():
-        builder.add_node(name, node)
+    for name in ("activity", "evaluation", "context", "memory", "timeline", "persist"):
+        builder.add_node(name, nodes[name])
 
     builder.add_edge(START, "activity")
     builder.add_edge("activity", "evaluation")
@@ -86,7 +95,27 @@ def build_graph(
     )
     builder.add_edge("context", "memory")
     builder.add_edge("memory", "timeline")
-    builder.add_edge("timeline", "behaviour")
+    builder.add_edge("timeline", "persist")
+    builder.add_edge("persist", END)
+
+    return builder.compile(checkpointer=checkpointer)
+
+
+def build_summary_graph(
+    *,
+    llm_client: LLMClient,
+    session_factory: Callable[[], Session],
+    checkpointer: Any | None = None,
+) -> Any:
+    """Compile the on-demand analysis + summary graph."""
+    from langgraph.graph import END, START, StateGraph
+
+    nodes = _build_nodes(llm_client, session_factory)
+    builder = StateGraph(LifeGraphState)
+    for name in ("behaviour", "insight", "recommendation", "summary", "reflection", "persist"):
+        builder.add_node(name, nodes[name])
+
+    builder.add_edge(START, "behaviour")
     builder.add_edge("behaviour", "insight")
     builder.add_edge("insight", "recommendation")
     builder.add_edge("recommendation", "summary")

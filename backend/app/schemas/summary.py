@@ -13,6 +13,17 @@ from app.schemas.insight import InsightView
 from app.schemas.recommendation import RecommendationView
 
 
+class SummaryCalendarResponse(BaseModel):
+    """Which days have data, for rendering the summary calendar.
+
+    ``summary_dates`` are days with a generated summary; ``activity_dates`` are
+    days with logged activity (a summary can be generated for these).
+    """
+
+    summary_dates: list[date_type]
+    activity_dates: list[date_type]
+
+
 class SummaryResponse(BaseModel):
     """Response for ``GET /summary``."""
 

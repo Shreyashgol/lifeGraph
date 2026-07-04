@@ -45,13 +45,18 @@ class MemoryNode:
         if not result.ok:
             return {"errors": [*state.errors, f"memory: {result.reason}"]}
 
+        statement = proposal.statement or ""
+        # A stable key so repeated evidence about the same fact accumulates
+        # (the Persist node routes proposals through the accumulator by this key).
+        key = (proposal.subject or statement).strip().lower()
         candidate = Memory(
             type=proposal.type or MemoryType.BEHAVIOUR,
-            statement=proposal.statement or "",
+            statement=statement,
             confidence=proposal.confidence,
             evidence_count=1,
             supporting_activity_ids=[activity.id],
             status=MemoryStatus.CANDIDATE,
             source="memory_node",
+            metadata={"key": key},
         )
         return {"memory_proposals": [*state.memory_proposals, candidate]}

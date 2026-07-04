@@ -9,6 +9,7 @@ export interface ActivityView {
   intent: string | null;
   confidence: number;
   evaluation_score: number | null;
+  evaluation_reason: string | null;
   validated: boolean;
 }
 
@@ -65,6 +66,11 @@ export interface RecommendationView {
 export interface RecommendationsResponse {
   recommendations: RecommendationView[];
   count: number;
+}
+
+export interface SummaryCalendarResponse {
+  summary_dates: string[];
+  activity_dates: string[];
 }
 
 export interface SummaryResponse {

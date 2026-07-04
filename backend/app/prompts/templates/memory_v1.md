@@ -44,6 +44,7 @@ Return a single JSON object and nothing else:
 {
   "action": "create | update | ignore",
   "type": "identity | goal | project | routine | behaviour | preference | interest | null",
+  "subject": "short lowercase canonical key naming the subject, e.g. 'agentic ai', 'python', 'morning coding'",
   "statement": "string or null",
   "confidence": 0.0,
   "reason": "string"
@@ -54,6 +55,8 @@ RULES
 - Return only valid JSON.
 - Prefer "ignore" when the evidence is a single, isolated observation.
 - Never fabricate evidence or invent memories.
+- Make "subject" a stable, reusable key so repeated evidence about the same fact
+  accumulates (use the same subject for the same underlying fact).
 
 FAILURE
 

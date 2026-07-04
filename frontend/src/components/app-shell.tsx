@@ -1,34 +1,31 @@
-"use client";
-
 import {
   Brain,
+  CalendarDays,
   Clock,
-  FileText,
   LayoutDashboard,
   Lightbulb,
   LogOut,
   PlusCircle,
 } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/activity", label: "Log Activity", icon: PlusCircle },
-  { href: "/timeline", label: "Timeline", icon: Clock },
-  { href: "/memory", label: "Memory", icon: Brain },
-  { href: "/insights", label: "Insights", icon: Lightbulb },
-  { href: "/summary", label: "Summary", icon: FileText },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/activity", label: "Log Activity", icon: PlusCircle },
+  { to: "/timeline", label: "Timeline", icon: Clock },
+  { to: "/memory", label: "Memory", icon: Brain },
+  { to: "/insights", label: "Insights", icon: Lightbulb },
+  { to: "/summary", label: "Summary", icon: CalendarDays },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const { data: session } = useSession();
+  const { pathname } = useLocation();
+  const { user, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen">
@@ -37,12 +34,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           LifeGraph
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
+          {NAV.map(({ to, label, icon: Icon }) => {
+            const active = pathname === to;
             return (
               <Link
-                key={href}
-                href={href}
+                key={to}
+                to={to}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   active
@@ -63,15 +60,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="font-semibold md:hidden">LifeGraph</span>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-sm text-muted-foreground sm:inline">
-              {session?.user?.name ?? session?.user?.email}
+              {user?.name ?? user?.email}
             </span>
             <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Sign out"
-              onClick={() => signOut({ callbackUrl: "/login" })}
-            >
+            <Button variant="ghost" size="sm" aria-label="Sign out" onClick={logout}>
               <LogOut className="h-4 w-4" />
             </Button>
           </div>

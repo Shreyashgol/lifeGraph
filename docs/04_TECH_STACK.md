@@ -453,7 +453,13 @@ Advantages
 
 # Frontend
 
-## Next.js (App Router)
+> **Update:** The frontend is a **React + Vite** single-page app (not Next.js).
+> Routing uses `react-router-dom`; authentication uses Google OAuth via
+> `@react-oauth/google` (client-side, login-gated single-tenant); theming uses a
+> small custom context. Tailwind CSS + shadcn/ui are unchanged. The
+> responsibilities below still apply.
+
+## React + Vite
 
 Responsibilities
 

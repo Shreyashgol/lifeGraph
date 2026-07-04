@@ -1,0 +1,25 @@
+# Render Blueprint for the LifeGraph backend.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: lifegraph-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: ENVIRONMENT
+        value: production
+      # Set these in the Render dashboard (do not commit secrets):
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DATABASE_URL          # Neon Postgres connection string
+        sync: false
+      - key: CORS_ORIGINS          # e.g. ["https://your-app.vercel.app"]
+        sync: false
+      - key: MODEL_NAME
+        value: llama-3.3-70b-versatile

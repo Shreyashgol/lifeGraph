@@ -12,7 +12,9 @@ from app.api.dependencies import get_graph, get_session
 from app.graph.state import LifeGraphState
 from app.main import create_app
 from app.models import Activity, Memory, MemoryType, Timeline
+from app.models.summary import DailySummary
 from app.repositories import MemoryRepository, TimelineRepository
+from app.repositories.summary_repository import SummaryRepository
 
 TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
 
@@ -137,3 +139,28 @@ def test_seeded_timeline_and_memory(api: TestClient, session: Session) -> None:
     memory = api.get("/memory")
     assert memory.json()["count"] == 1
     assert memory.json()["memories"][0]["type"] == "goal"
+
+
+def test_summary_dates_lists_activity_and_summary_days(
+    api: TestClient, session: Session
+) -> None:
+    activity = Activity(
+        timestamp=TS, raw_text="x", category="Deep Work", duration=60, confidence=0.9
+    )
+    TimelineRepository(session).create(
+        Timeline(date=date(2026, 7, 3), activities=[activity], total_duration=60)
+    )
+    SummaryRepository(session).create(
+        DailySummary(
+            date=date(2026, 7, 2),
+            overview="A good day.",
+            timeline="Worked.",
+            tomorrow_focus="Rest.",
+        )
+    )
+
+    resp = api.get("/summary/dates")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["activity_dates"] == ["2026-07-03"]
+    assert body["summary_dates"] == ["2026-07-02"]

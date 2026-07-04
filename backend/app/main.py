@@ -63,6 +63,10 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
+        # In development, accept any localhost port so the frontend "just works"
+        # regardless of the dev port (Vite 5173, etc.). Production uses only the
+        # explicit allowlist above.
+        allow_origin_regex=None if settings.is_production else r"http://localhost:\d+",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

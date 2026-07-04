@@ -35,10 +35,15 @@ class ActivityProposal(_ProposalBase):
 
 
 class MemoryProposal(_ProposalBase):
-    """A proposed memory action (create/update/ignore)."""
+    """A proposed memory action (create/update/ignore).
+
+    ``subject`` is a short, stable, canonical key (e.g. "agentic ai", "python",
+    "morning coding") used to accumulate evidence across observations.
+    """
 
     action: Literal["create", "update", "ignore"]
     type: MemoryType | None = None
+    subject: str | None = None
     statement: str | None = None
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str

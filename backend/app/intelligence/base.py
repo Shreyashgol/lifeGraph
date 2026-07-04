@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 from typing import Any, ClassVar, TypeVar
+from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
 
@@ -30,20 +31,53 @@ _RETRYABLE = (LLMError, InvalidLLMResponseError, ValidationError, json.JSONDecod
 
 _INSUFFICIENT = "insufficient_context"
 
+# Sentinel marking a value to be dropped during identifier stripping.
+_DROP = object()
+
+
+def _strip_identifiers(obj: Any) -> Any:
+    """Recursively remove raw identifiers (UUIDs) from prompt context.
+
+    Opaque IDs — ``id`` fields, ``supporting_activity_ids``, ``evidence`` lists,
+    etc. — carry no meaning for a reasoning prompt and, worse, get echoed
+    verbatim into user-facing insights and recommendations (e.g. "based on
+    memory 3f2a…"). Reasoning must be grounded in the human-readable fields
+    (titles, statements, categories), so identifiers are stripped before the
+    context ever reaches the model.
+    """
+    if isinstance(obj, UUID):
+        return _DROP
+    if isinstance(obj, dict):
+        cleaned: dict[Any, Any] = {}
+        for key, val in obj.items():
+            value = _strip_identifiers(val)
+            if value is _DROP:
+                continue
+            cleaned[key] = value
+        return cleaned
+    if isinstance(obj, (list, tuple)):
+        items = [_strip_identifiers(v) for v in obj]
+        return [item for item in items if item is not _DROP]
+    return obj
+
 
 def to_prompt_value(value: Any) -> str:
-    """Serialize a context value into a compact string for prompt injection."""
+    """Serialize a context value into a compact string for prompt injection.
+
+    Raw identifiers are stripped (see :func:`_strip_identifiers`) so opaque
+    UUIDs never leak into the model's reasoning or its user-facing output.
+    """
     if value is None:
         return "none"
     if isinstance(value, str):
         return value
     if isinstance(value, BaseModel):
-        return value.model_dump_json()
+        return json.dumps(_strip_identifiers(value.model_dump(mode="python")), default=str)
     if isinstance(value, (list, tuple)):
-        items = [v.model_dump(mode="json") if isinstance(v, BaseModel) else v for v in value]
-        return json.dumps(items, default=str)
+        items = [v.model_dump(mode="python") if isinstance(v, BaseModel) else v for v in value]
+        return json.dumps(_strip_identifiers(items), default=str)
     if isinstance(value, dict):
-        return json.dumps(value, default=str)
+        return json.dumps(_strip_identifiers(value), default=str)
     return str(value)
 
 
@@ -92,7 +126,7 @@ class IntelligenceService:
                 )
 
         raise InvalidLLMResponseError(
-            f"{self.prompt_name} failed after {attempts} attempt(s)"
+            f"{self.prompt_name} failed after {attempts} attempt(s): {last_error}"
         ) from last_error
 
     async def _reason_text(self, variables: dict[str, Any]) -> str:
@@ -122,7 +156,7 @@ class IntelligenceService:
                 )
 
         raise InvalidLLMResponseError(
-            f"{self.prompt_name} failed after {attempts} attempt(s)"
+            f"{self.prompt_name} failed after {attempts} attempt(s): {last_error}"
         ) from last_error
 
     @staticmethod

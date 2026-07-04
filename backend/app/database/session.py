@@ -16,15 +16,31 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import get_settings
 
+def _normalize_db_url(url: str) -> str:
+    """Select the installed psycopg v3 driver for Postgres URLs.
+
+    Neon (and most tools) hand out ``postgresql://`` / ``postgres://`` URLs, which
+    SQLAlchemy maps to the psycopg2 driver. We ship psycopg v3, so rewrite the
+    scheme to ``postgresql+psycopg://``. URLs that already name a driver
+    (``postgresql+psycopg://``, ``postgresql+psycopg2://``) are left untouched.
+    """
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url[len("postgresql://") :]
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url[len("postgres://") :]
+    return url
+
+
 _settings = get_settings()
-_is_sqlite = _settings.database_url.startswith("sqlite")
+_database_url = _normalize_db_url(_settings.database_url)
+_is_sqlite = _database_url.startswith("sqlite")
 
 # SQLite needs check_same_thread under FastAPI's threadpool; Postgres (Neon is
 # serverless) benefits from pre-ping so dropped connections are recycled.
 _connect_args = {"check_same_thread": False} if _is_sqlite else {}
 
 engine = create_engine(
-    _settings.database_url,
+    _database_url,
     echo=False,
     pool_pre_ping=True,
     connect_args=_connect_args,

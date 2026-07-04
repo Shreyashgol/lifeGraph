@@ -23,11 +23,14 @@ class SummaryNode:
         self.service = service
 
     async def __call__(self, state: LifeGraphState) -> dict:
-        day = (
-            state.structured_activity.timestamp.date()
-            if state.structured_activity
-            else date.today()
-        )
+        # The summary graph carries the day's timeline; fall back to the activity
+        # or today only if no timeline is present.
+        if state.timeline is not None:
+            day = state.timeline.date
+        elif state.structured_activity is not None:
+            day = state.structured_activity.timestamp.date()
+        else:
+            day = date.today()
         try:
             markdown = await self.service.reason(
                 today=day,

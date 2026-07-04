@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_prefix: str = "/api"
     cors_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:3000"],
-        description="Origins permitted to call the API (the Next.js frontend).",
+        default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"],
+        description="Origins permitted to call the API (the Vite frontend on 5173).",
     )
 
     # --- Persistence -------------------------------------------------------

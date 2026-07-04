@@ -58,6 +58,8 @@ RULES
 - Return only valid JSON.
 - Every recommendation must be personalized and evidence-based.
 - No generic advice. If nothing is well-supported, return an empty list.
+- Write for a non-technical user. Explain the reasoning in plain language —
+  never quote internal identifiers, UUIDs, or record IDs.
 
 FAILURE
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from uuid import uuid4
 
 from sqlmodel import Session
 
@@ -147,6 +148,43 @@ def test_memory_repository_filters(session: Session) -> None:
 
     assert [m.id for m in repo.list_active()] == [active.id]
     assert [m.id for m in repo.list_by_type(MemoryType.INTEREST)] == [candidate.id]
+
+
+def test_memory_accumulator_earns_active_at_threshold(session: Session) -> None:
+    repo = MemoryRepository(session)
+
+    m1 = repo.accumulate_memory(
+        memory_type=MemoryType.INTEREST, key="agentic ai", statement="Enjoys agentic AI.", activity_id=uuid4()
+    )
+    assert m1.status is MemoryStatus.CANDIDATE and m1.evidence_count == 1
+
+    repo.accumulate_memory(
+        memory_type=MemoryType.INTEREST, key="Agentic AI", statement="Enjoys agentic AI.", activity_id=uuid4()
+    )
+    m3 = repo.accumulate_memory(
+        memory_type=MemoryType.INTEREST, key="agentic ai", statement="Enjoys agentic AI.", activity_id=uuid4()
+    )
+    assert m3.status is MemoryStatus.ACTIVE  # promoted at 3 observations
+    assert m3.evidence_count == 3
+    assert len(m3.supporting_activity_ids) == 3
+
+    # A different subject is a separate memory.
+    other = repo.accumulate_memory(
+        memory_type=MemoryType.INTEREST, key="distributed systems", statement="Into distributed systems.", activity_id=uuid4()
+    )
+    assert other.evidence_count == 1
+    assert len(repo.list_by_type(MemoryType.INTEREST)) == 2
+
+
+def test_accumulate_project_is_a_typed_wrapper(session: Session) -> None:
+    repo = MemoryRepository(session)
+    m = repo.accumulate_project("LifeGraph", uuid4())
+    assert m.type is MemoryType.PROJECT
+    assert m.metadata["key"] == "lifegraph"
+    # Same project accrues onto the same memory.
+    m2 = repo.accumulate_project("lifegraph", uuid4())
+    assert m2.evidence_count == 2
+    assert len(repo.list_by_type(MemoryType.PROJECT)) == 1
 
 
 # --------------------------------------------------------------------------- #

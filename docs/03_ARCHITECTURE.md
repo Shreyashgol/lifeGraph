@@ -207,51 +207,29 @@ Each node updates only the fields it owns.
 
 ---
 
-# 9. Graph Workflow
+# 9. Graph Workflows
+
+LifeGraph runs **two** workflows over the shared `LifeGraphState`, so the
+expensive analysis is not paid on every activity (docs/06 §27).
+
+## Activity graph — runs on every `POST /activity` (ingest, ~3 LLM calls)
 
 ```text
-START
-   │
-   ▼
-Activity Node
-   │
-   ▼
-Evaluation Node   (LLM-as-judge; conditional retry → Activity, max 2)
-   │
-   ▼
-Context Node
-   │
-   ▼
-Memory Node
-   │
-   ▼
-Timeline Node
-   │
-   ▼
-Behaviour Node
-   │
-   ▼
-Insight Node
-   │
-   ▼
-Recommendation Node
-   │
-   ▼
-Summary Node
-   │
-   ▼
-Reflection Node
-   │
-   ▼
-Persist State
-   │
-   ▼
-END
+START → Activity → Evaluation → Context → Memory → Timeline → Persist → END
 ```
 
 The Evaluation Node judges the Activity proposal and drives a conditional retry
-edge (see docs/06 §14a, docs/08 §14a). Reflection remains the holistic
-end-of-graph QA step.
+edge back to Activity (LLM-as-judge; max 2 — see docs/06 §14a, docs/08 §14a).
+
+## Summary graph — runs on demand via `POST /summary` (~5 LLM calls)
+
+```text
+START → Behaviour → Insight → Recommendation → Summary → Reflection → Persist → END
+```
+
+It analyzes the accumulated day (loaded timeline + active memories), generates the
+insights, recommendations and narrative, and persists the summary. Reflection is
+the holistic end-of-graph QA step for this workflow.
 
 ---
 

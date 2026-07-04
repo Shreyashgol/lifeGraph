@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from app.api.dependencies import get_graph, get_session
+from app.api.dependencies import get_graph, get_session, result_to_state
 from app.graph.state import LifeGraphState
 from app.repositories.memory_repository import MemoryRepository
 from app.repositories.timeline_repository import TimelineRepository
@@ -16,13 +16,6 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.activity import ActivityResponse, ActivityView, LogActivityRequest
 
 router = APIRouter(tags=["activity"])
-
-
-def _as_state(result: Any) -> LifeGraphState:
-    """Coerce a graph invocation result into a LifeGraphState."""
-    if isinstance(result, LifeGraphState):
-        return result
-    return LifeGraphState.model_validate(result)
 
 
 @router.post("/activity", response_model=ActivityResponse)
@@ -45,7 +38,7 @@ async def log_activity(
     )
 
     result = await graph.ainvoke(initial)
-    state = _as_state(result)
+    state = result_to_state(result)
     activity = state.structured_activity
 
     return ActivityResponse(

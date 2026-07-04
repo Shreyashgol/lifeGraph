@@ -61,3 +61,19 @@ class SummaryRepository(BaseRepository[DailySummary]):
         statement = select(SummaryTable).order_by(SummaryTable.created_at.desc())
         row = self.session.exec(statement).first()
         return self._to_domain(row) if row is not None else None
+
+    def list_dates(
+        self, *, start: date | None = None, end: date | None = None
+    ) -> list[date]:
+        """Return the distinct days that have at least one summary, ascending.
+
+        Powers the calendar view: only dates are loaded (not full summaries), so
+        the client can highlight which days are already summarized.
+        """
+        statement = select(SummaryTable.date).distinct()
+        if start is not None:
+            statement = statement.where(SummaryTable.date >= start)
+        if end is not None:
+            statement = statement.where(SummaryTable.date <= end)
+        statement = statement.order_by(SummaryTable.date)
+        return list(self.session.exec(statement).all())

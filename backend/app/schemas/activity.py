@@ -30,6 +30,7 @@ class ActivityView(BaseModel):
     intent: str | None = None
     confidence: float
     evaluation_score: float | None = None
+    evaluation_reason: str | None = None
     validated: bool
 
     @classmethod
@@ -43,6 +44,7 @@ class ActivityView(BaseModel):
             intent=activity.intent,
             confidence=activity.confidence,
             evaluation_score=activity.evaluation_score,
+            evaluation_reason=activity.evaluation_reason,
             validated=activity.validated,
         )
 

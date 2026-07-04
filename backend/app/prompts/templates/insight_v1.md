@@ -53,6 +53,8 @@ RULES
 - Return only valid JSON.
 - Every insight must reference evidence; never speculate.
 - Remain objective. Do not give advice — that is the recommendation stage.
+- Write for a non-technical user. Cite evidence in plain language (what the
+  user did, when) — never quote internal identifiers, UUIDs, or record IDs.
 
 FAILURE
 

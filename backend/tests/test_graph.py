@@ -14,7 +14,7 @@ from app.graph.nodes import ActivityNode, ContextNode, EvaluationNode, MemoryNod
 from app.graph.state import LifeGraphState
 from app.intelligence.llm_client import LLMClient
 from app.intelligence.proposals import ActivityProposal, EvaluationDecision, MemoryProposal
-from app.models import Activity, Memory, MemoryStatus, MemoryType, UserProfile
+from app.models import Activity, Memory, MemoryStatus, MemoryType, Timeline, UserProfile
 from app.services.timeline_service import TimelineService
 from app.validators import ActivityValidator, MemoryValidator
 
@@ -213,18 +213,22 @@ class RoutingFakeClient(LLMClient):
         return "{}"
 
 
-async def test_full_graph_executes_end_to_end() -> None:
-    pytest.importorskip("langgraph")
-    from app.graph.builder import build_graph
-
+def _memory_engine():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     from app.database import models  # noqa: F401  (register tables)
 
     SQLModel.metadata.create_all(engine)
+    return engine
 
-    graph = build_graph(
+
+async def test_activity_graph_executes_end_to_end() -> None:
+    pytest.importorskip("langgraph")
+    from app.graph.builder import build_activity_graph
+
+    engine = _memory_engine()
+    graph = build_activity_graph(
         llm_client=RoutingFakeClient(),
         session_factory=lambda: Session(engine),
         checkpointer=None,
@@ -235,4 +239,24 @@ async def test_full_graph_executes_end_to_end() -> None:
     data = result if isinstance(result, dict) else result.model_dump()
     assert data["structured_activity"] is not None
     assert data["timeline"] is not None
+    # The ingest graph does NOT generate a summary — that's the on-demand graph.
+    # (LangGraph omits untouched channels from the result dict.)
+    assert data.get("daily_summary") is None
+
+
+async def test_summary_graph_executes_end_to_end() -> None:
+    pytest.importorskip("langgraph")
+    from app.graph.builder import build_summary_graph
+
+    engine = _memory_engine()
+    graph = build_summary_graph(
+        llm_client=RoutingFakeClient(),
+        session_factory=lambda: Session(engine),
+        checkpointer=None,
+    )
+    activity = _activity(project="LifeGraph", duration=120)
+    timeline = Timeline(date=date(2026, 7, 3), activities=[activity], total_duration=120)
+    result = await graph.ainvoke(LifeGraphState(timeline=timeline))
+
+    data = result if isinstance(result, dict) else result.model_dump()
     assert data["daily_summary"] is not None
