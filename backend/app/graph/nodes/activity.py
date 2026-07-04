@@ -20,9 +20,7 @@ _logger = get_logger("app.graph.nodes.activity")
 
 
 class ActivityNode:
-    def __init__(
-        self, service: ActivityIntelligenceService, validator: ActivityValidator
-    ) -> None:
+    def __init__(self, service: ActivityIntelligenceService, validator: ActivityValidator) -> None:
         self.service = service
         self.validator = validator
 

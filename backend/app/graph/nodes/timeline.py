@@ -17,7 +17,5 @@ class TimelineNode:
         activity = state.structured_activity
         if activity is None:
             return {}
-        timeline = self.service.add_activity(
-            state.timeline, activity, activity.timestamp.date()
-        )
+        timeline = self.service.add_activity(state.timeline, activity, activity.timestamp.date())
         return {"timeline": timeline}

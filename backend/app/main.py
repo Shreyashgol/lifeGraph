@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.activity import router as activity_router
+from app.api.auth import router as auth_router
 from app.api.health import router as health_router
 from app.api.insights import router as insights_router
 from app.api.memory import router as memory_router
@@ -63,16 +64,16 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        # In development, accept any localhost port so the frontend "just works"
-        # regardless of the dev port (Vite 5173, etc.). Production uses only the
-        # explicit allowlist above.
-        allow_origin_regex=None if settings.is_production else r"http://localhost:\d+",
+        # In development, accept any localhost or 127.0.0.1 port so the frontend
+        # "just works" regardless of how it is accessed (localhost vs 127.0.0.1).
+        allow_origin_regex=None if settings.is_production else r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
     app.include_router(health_router)
+    app.include_router(auth_router)
     app.include_router(onboarding_router)
     app.include_router(activity_router)
     app.include_router(timeline_router)

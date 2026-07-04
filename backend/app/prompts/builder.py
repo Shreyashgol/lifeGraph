@@ -52,9 +52,7 @@ class PromptBuilder:
     def __init__(self, registry: PromptRegistry | None = None) -> None:
         self.registry = registry or get_prompt_registry()
 
-    def build(
-        self, name: str, variables: dict[str, Any], version: str = "v1"
-    ) -> RenderedPrompt:
+    def build(self, name: str, variables: dict[str, Any], version: str = "v1") -> RenderedPrompt:
         """Render ``name``/``version`` with ``variables``.
 
         Raises :class:`MissingPromptVariableError` if the template requires a
@@ -69,9 +67,7 @@ class PromptBuilder:
                 f"Prompt {name}/{version} missing variables: {sorted(missing)}"
             )
 
-        text = _VARIABLE_PATTERN.sub(
-            lambda match: str(variables[match.group(1)]), prompt.template
-        )
+        text = _VARIABLE_PATTERN.sub(lambda match: str(variables[match.group(1)]), prompt.template)
 
         definition = prompt.definition
         _logger.info(

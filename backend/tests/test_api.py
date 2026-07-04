@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,7 +16,7 @@ from app.models.summary import DailySummary
 from app.repositories import MemoryRepository, TimelineRepository
 from app.repositories.summary_repository import SummaryRepository
 
-TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
+TS = datetime(2026, 7, 3, 9, 0, tzinfo=UTC)
 
 
 class FakeGraph:
@@ -41,7 +41,22 @@ def api(session: Session) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_session] = lambda: session
     app.dependency_overrides[get_graph] = lambda: FakeGraph()
-    return TestClient(app)
+
+    # Register an initial user account for authentication
+    from app.auth.security import create_access_token
+    from app.repositories.user_repository import UserRepository
+    repo = UserRepository(session)
+    user = repo.create_account(
+        email="test@example.com",
+        name="Test User",
+        hashed_password="mock-password-hash",
+    )
+
+    token = create_access_token(str(user.id))
+    client = TestClient(app)
+    client.headers["Authorization"] = f"Bearer {token}"
+    client.user_id = str(user.id)
+    return client
 
 
 # --------------------------------------------------------------------------- #
@@ -125,10 +140,10 @@ def test_seeded_timeline_and_memory(api: TestClient, session: Session) -> None:
     activity = Activity(
         timestamp=TS, raw_text="x", category="Deep Work", project="LifeGraph", duration=60, confidence=0.9
     )
-    TimelineRepository(session).create(
+    TimelineRepository(session, api.user_id).create(
         Timeline(date=date(2026, 7, 3), activities=[activity], total_duration=60)
     )
-    MemoryRepository(session).create(
+    MemoryRepository(session, api.user_id).create(
         Memory(type=MemoryType.GOAL, statement="Ship LifeGraph", confidence=0.9, evidence_count=3)
     )
 
@@ -151,17 +166,17 @@ class _FakeSummaryGraph:
         return state.model_copy(update={"errors": self._errors})
 
 
-def _seed_timeline(session: Session) -> None:
+def _seed_timeline(session: Session, user_id: str) -> None:
     activity = Activity(
         timestamp=TS, raw_text="x", category="Deep Work", duration=60, confidence=0.9
     )
-    TimelineRepository(session).create(
+    TimelineRepository(session, user_id).create(
         Timeline(date=TS.date(), activities=[activity], total_duration=60)
     )
 
 
 def test_summary_rate_limit_returns_429(api: TestClient, session: Session) -> None:
-    _seed_timeline(session)
+    _seed_timeline(session, api.user_id)
     api.app.dependency_overrides[get_summary_graph_dep] = lambda: _FakeSummaryGraph(
         ["behaviour: Error code: 429 - {'code': 'rate_limit_exceeded'}"]
     )
@@ -171,7 +186,7 @@ def test_summary_rate_limit_returns_429(api: TestClient, session: Session) -> No
 
 
 def test_summary_generic_failure_returns_502(api: TestClient, session: Session) -> None:
-    _seed_timeline(session)
+    _seed_timeline(session, api.user_id)
     api.app.dependency_overrides[get_summary_graph_dep] = lambda: _FakeSummaryGraph(
         ["summary: unexpected parsing error"]
     )
@@ -185,10 +200,10 @@ def test_summary_dates_lists_activity_and_summary_days(
     activity = Activity(
         timestamp=TS, raw_text="x", category="Deep Work", duration=60, confidence=0.9
     )
-    TimelineRepository(session).create(
+    TimelineRepository(session, api.user_id).create(
         Timeline(date=date(2026, 7, 3), activities=[activity], total_duration=60)
     )
-    SummaryRepository(session).create(
+    SummaryRepository(session, api.user_id).create(
         DailySummary(
             date=date(2026, 7, 2),
             overview="A good day.",

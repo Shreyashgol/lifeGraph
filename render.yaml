@@ -21,5 +21,9 @@ services:
         sync: false
       - key: CORS_ORIGINS          # e.g. ["https://your-app.vercel.app"]
         sync: false
+      - key: JWT_SECRET            # Secret for signing session JWTs
+        sync: false
+      - key: GOOGLE_CLIENT_ID      # Google OAuth 2.0 Web client ID
+        sync: false
       - key: MODEL_NAME
         value: llama-3.3-70b-versatile

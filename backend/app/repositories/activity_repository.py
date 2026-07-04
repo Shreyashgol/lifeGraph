@@ -19,6 +19,7 @@ class ActivityRepository(BaseRepository[Activity]):
     def _to_row(self, model: Activity) -> ActivityTable:
         return ActivityTable(
             id=str(model.id),
+            user_id=self.user_id,
             timestamp=to_naive_utc(model.timestamp),
             raw_text=model.raw_text,
             normalized_text=model.normalized_text,
@@ -68,7 +69,11 @@ class ActivityRepository(BaseRepository[Activity]):
         end = datetime.combine(day, time.max)
         statement = (
             select(ActivityTable)
-            .where(ActivityTable.timestamp >= start, ActivityTable.timestamp <= end)
+            .where(
+                ActivityTable.user_id == self.user_id,
+                ActivityTable.timestamp >= start,
+                ActivityTable.timestamp <= end,
+            )
             .order_by(ActivityTable.timestamp)
         )
         return [self._to_domain(row) for row in self.session.exec(statement).all()]

@@ -11,22 +11,51 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
-from fastapi import HTTPException
+from fastapi import Depends, Header, HTTPException
 from sqlmodel import Session
 
+from app.auth import decode_access_token
 from app.database.session import engine, get_session
 from app.graph.state import LifeGraphState
 from app.intelligence.errors import IntelligenceError
+from app.models.account import AuthUser
+from app.repositories.user_repository import UserRepository
 
 __all__ = [
     "get_session",
     "session_factory",
+    "get_current_user",
     "get_activity_graph",
     "get_summary_graph",
     "get_graph",
     "get_summary_graph_dep",
     "result_to_state",
 ]
+
+
+def get_current_user(
+    authorization: str | None = Header(default=None),
+    session: Session = Depends(get_session),
+) -> AuthUser:
+    """Resolve the authenticated user from the ``Authorization: Bearer`` token.
+
+    Raises **401** when the token is missing, malformed, expired, or its account
+    no longer exists. This is the gate that makes every data endpoint per-user.
+    """
+    unauthorized = HTTPException(
+        status_code=401,
+        detail="not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise unauthorized
+    user_id = decode_access_token(authorization[7:].strip())
+    if user_id is None:
+        raise unauthorized
+    user = UserRepository(session).get_by_id(user_id)
+    if user is None:
+        raise unauthorized
+    return user
 
 
 def session_factory() -> Session:
@@ -67,9 +96,7 @@ def _resolve(builder: Any) -> Any:
     try:
         return builder()
     except (IntelligenceError, ImportError) as exc:
-        raise HTTPException(
-            status_code=503, detail=f"reasoning engine unavailable: {exc}"
-        ) from exc
+        raise HTTPException(status_code=503, detail=f"reasoning engine unavailable: {exc}") from exc
 
 
 def get_graph() -> Any:

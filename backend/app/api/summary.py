@@ -13,8 +13,14 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
-from app.api.dependencies import get_session, get_summary_graph_dep, result_to_state
+from app.api.dependencies import (
+    get_current_user,
+    get_session,
+    get_summary_graph_dep,
+    result_to_state,
+)
 from app.graph.state import LifeGraphState
+from app.models.account import AuthUser
 from app.repositories.memory_repository import MemoryRepository
 from app.repositories.summary_repository import SummaryRepository
 from app.repositories.timeline_repository import TimelineRepository
@@ -39,17 +45,20 @@ async def generate_summary(
     day: date | None = Query(default=None, alias="date"),
     session: Session = Depends(get_session),
     graph: Any = Depends(get_summary_graph_dep),
+    current_user: AuthUser = Depends(get_current_user),
 ) -> SummaryResponse:
     """Generate (and persist) the day's summary, insights, and recommendations."""
+    uid = str(current_user.id)
     target = day or datetime.now(UTC).date()
-    timeline = TimelineRepository(session).get_by_date(target)
+    timeline = TimelineRepository(session, uid).get_by_date(target)
     if timeline is None or not timeline.activities:
         raise HTTPException(status_code=400, detail=f"no activities on {target} to summarize")
 
     initial = LifeGraphState(
-        user_profile=UserRepository(session).get_first(),
+        user_id=uid,
+        user_profile=UserRepository(session).get_profile(uid),
         timeline=timeline,
-        memories=MemoryRepository(session).list_active(),
+        memories=MemoryRepository(session, uid).list_active(),
     )
 
     result = await graph.ainvoke(initial)
@@ -72,11 +81,13 @@ def list_summary_dates(
     start: date | None = Query(default=None),
     end: date | None = Query(default=None),
     session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
 ) -> SummaryCalendarResponse:
     """List days that have a summary and days that have activity (for the calendar)."""
+    uid = str(current_user.id)
     return SummaryCalendarResponse(
-        summary_dates=SummaryRepository(session).list_dates(start=start, end=end),
-        activity_dates=TimelineRepository(session).list_dates(start=start, end=end),
+        summary_dates=SummaryRepository(session, uid).list_dates(start=start, end=end),
+        activity_dates=TimelineRepository(session, uid).list_dates(start=start, end=end),
     )
 
 
@@ -84,8 +95,9 @@ def list_summary_dates(
 def get_summary(
     day: date | None = Query(default=None, alias="date"),
     session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
 ) -> SummaryResponse:
-    repo = SummaryRepository(session)
+    repo = SummaryRepository(session, str(current_user.id))
     summary = repo.get_by_date(day) if day is not None else repo.get_latest()
     if summary is None:
         raise HTTPException(status_code=404, detail="no summary available")

@@ -8,8 +8,9 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from app.api.dependencies import get_graph, get_session, result_to_state
+from app.api.dependencies import get_current_user, get_graph, get_session, result_to_state
 from app.graph.state import LifeGraphState
+from app.models.account import AuthUser
 from app.repositories.memory_repository import MemoryRepository
 from app.repositories.timeline_repository import TimelineRepository
 from app.repositories.user_repository import UserRepository
@@ -23,16 +24,19 @@ async def log_activity(
     payload: LogActivityRequest,
     session: Session = Depends(get_session),
     graph: Any = Depends(get_graph),
+    current_user: AuthUser = Depends(get_current_user),
 ) -> ActivityResponse:
     """Understand an activity, evolve memory/timeline, and return the result."""
-    user = UserRepository(session).get_first()
-    memories = MemoryRepository(session).list_active()
+    uid = str(current_user.id)
+    profile = UserRepository(session).get_profile(uid)
+    memories = MemoryRepository(session, uid).list_active()
     timestamp = payload.timestamp or datetime.now(UTC)
-    timeline = TimelineRepository(session).get_by_date(timestamp.date())
+    timeline = TimelineRepository(session, uid).get_by_date(timestamp.date())
 
     initial = LifeGraphState(
         current_activity=payload.activity,
-        user_profile=user,
+        user_id=uid,
+        user_profile=profile,
         memories=memories,
         timeline=timeline,
     )

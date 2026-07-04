@@ -1,78 +1,101 @@
 import { googleLogout } from "@react-oauth/google";
-import { jwtDecode } from "jwt-decode";
 import { createContext, useContext, useEffect, useState } from "react";
+import { apiPost, apiGet } from "@/lib/api";
 
-interface AuthUser {
-  name?: string;
-  email?: string;
-  picture?: string;
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string | null;
 }
 
-interface GoogleCredential {
-  name?: string;
-  email?: string;
-  picture?: string;
-  exp?: number;
+interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: AuthUser;
 }
 
 interface AuthState {
   user: AuthUser | null;
   isAuthenticated: boolean;
   ready: boolean;
-  login: (credential: string) => boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
-const STORAGE_KEY = "lifegraph.auth";
-
-const allowedEmails = (import.meta.env.VITE_ALLOWED_EMAILS ?? "")
-  .split(",")
-  .map((email: string) => email.trim().toLowerCase())
-  .filter(Boolean);
+const TOKEN_KEY = "lifegraph.token";
+const USER_KEY = "lifegraph.user";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const storedUser = localStorage.getItem(USER_KEY);
+    if (token && storedUser) {
       try {
-        setUser(JSON.parse(raw) as AuthUser);
+        setUser(JSON.parse(storedUser) as AuthUser);
+
+        // Refresh user info from /auth/me
+        apiGet<AuthUser>("/auth/me")
+          .then((freshUser) => {
+            setUser(freshUser);
+            localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+          })
+          .catch(() => {
+            // Token likely expired; apiGet handles cleaning up storage and redirection.
+          });
       } catch {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
       }
     }
     setReady(true);
   }, []);
 
-  /** Validate & store a Google ID-token credential. Returns false if not allowed. */
-  function login(credential: string): boolean {
-    const decoded = jwtDecode<GoogleCredential>(credential);
-    const email = decoded.email?.toLowerCase();
-    if (allowedEmails.length > 0 && (!email || !allowedEmails.includes(email))) {
-      return false;
-    }
-    const nextUser: AuthUser = {
-      name: decoded.name,
-      email: decoded.email,
-      picture: decoded.picture,
-    };
-    setUser(nextUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-    return true;
+  async function login(email: string, password: string): Promise<void> {
+    const res = await apiPost<AuthResponse>("/auth/login", { email, password });
+    setUser(res.user);
+    localStorage.setItem(TOKEN_KEY, res.access_token);
+    localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+  }
+
+  async function register(email: string, password: string, name?: string): Promise<void> {
+    const res = await apiPost<AuthResponse>("/auth/register", { email, password, name });
+    setUser(res.user);
+    localStorage.setItem(TOKEN_KEY, res.access_token);
+    localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+  }
+
+  async function loginWithGoogle(credential: string): Promise<void> {
+    const res = await apiPost<AuthResponse>("/auth/google", { id_token: credential });
+    setUser(res.user);
+    localStorage.setItem(TOKEN_KEY, res.access_token);
+    localStorage.setItem(USER_KEY, JSON.stringify(res.user));
   }
 
   function logout() {
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     googleLogout();
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, ready, login, logout }}
+      value={{
+        user,
+        isAuthenticated: !!user,
+        ready,
+        login,
+        register,
+        loginWithGoogle,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

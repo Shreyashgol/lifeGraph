@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -78,6 +78,23 @@ class Settings(BaseSettings):
     # intelligence layer (Phase 5) requires it.
     groq_api_key: str | None = None
     model_name: str = "llama-3.3-70b-versatile"
+
+    # --- Auth --------------------------------------------------------------
+    # Secret used to sign our own session JWTs. The insecure default is fine for
+    # local dev; production MUST override it (a startup check enforces this).
+    jwt_secret: str = "dev-insecure-change-me"
+    jwt_expiry_minutes: int = 60 * 24 * 7  # 7 days
+    # Google OAuth client ID; required to verify Google sign-in ID tokens.
+    google_client_id: str | None = None
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def _require_strong_secret_in_prod(cls, value: str, info: Any) -> str:
+        if info.data.get("environment", "").lower() == "production" and (
+            not value or value == "dev-insecure-change-me"
+        ):
+            raise ValueError("JWT_SECRET must be set to a strong value in production")
+        return value
 
     @property
     def is_production(self) -> bool:

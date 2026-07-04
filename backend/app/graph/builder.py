@@ -53,9 +53,7 @@ from app.validators.activity_validator import ActivityValidator
 from app.validators.memory_validator import MemoryValidator
 
 
-def _build_nodes(
-    llm_client: LLMClient, session_factory: Callable[[], Session]
-) -> dict[str, Any]:
+def _build_nodes(llm_client: LLMClient, session_factory: Callable[[], Session]) -> dict[str, Any]:
     """Construct every node (nodes are cheap — they only hold references)."""
     return {
         "activity": ActivityNode(ActivityIntelligenceService(llm_client), ActivityValidator()),

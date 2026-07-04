@@ -21,14 +21,23 @@ from sqlmodel import Field, SQLModel
 
 
 class UserTable(SQLModel, table=True):
-    """Persistence entity for :class:`app.models.user.UserProfile`."""
+    """Persistence entity for a user account + :class:`app.models.user.UserProfile`.
+
+    One row is both the *account* (email, password/Google identity) and the
+    *profile* (occupation, goals, …). Profile fields are nullable/empty until the
+    user completes onboarding.
+    """
 
     __tablename__ = "users"
 
     id: str = Field(primary_key=True)
+    email: str = Field(unique=True, index=True)
+    hashed_password: str | None = None  # null for Google-only accounts
     name: str
-    occupation: str
-    timezone: str
+    picture: str | None = None
+    # Profile fields — filled in at onboarding.
+    occupation: str | None = None
+    timezone: str | None = None
     goals: list[str] = Field(sa_column=Column(JSON))
     interests: list[str] = Field(sa_column=Column(JSON))
     active_projects: list[str] = Field(sa_column=Column(JSON))
@@ -43,6 +52,7 @@ class ActivityTable(SQLModel, table=True):
     __tablename__ = "activities"
 
     id: str = Field(primary_key=True)
+    user_id: str = Field(index=True)
     timestamp: datetime = Field(index=True)
     raw_text: str
     normalized_text: str | None = None
@@ -71,6 +81,7 @@ class MemoryTable(SQLModel, table=True):
     __tablename__ = "memories"
 
     id: str = Field(primary_key=True)
+    user_id: str = Field(index=True)
     type: str = Field(index=True)
     statement: str
     confidence: float = Field(index=True)
@@ -93,6 +104,7 @@ class TimelineTable(SQLModel, table=True):
 
     __tablename__ = "timelines"
 
+    user_id: str = Field(primary_key=True)
     date: date_type = Field(primary_key=True)
     activities: list[Any] = Field(sa_column=Column(JSON))
     sessions: list[Any] = Field(sa_column=Column(JSON))
@@ -106,6 +118,7 @@ class SummaryTable(SQLModel, table=True):
     __tablename__ = "summaries"
 
     id: str = Field(primary_key=True)
+    user_id: str = Field(index=True)
     date: date_type = Field(index=True)
     overview: str
     timeline: str

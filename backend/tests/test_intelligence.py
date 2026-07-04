@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -20,7 +20,7 @@ from app.intelligence import (
 from app.intelligence.proposals import ActivityProposal, BehaviourPatternItem, InsightItem
 from app.models import Activity
 
-TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
+TS = datetime(2026, 7, 3, 9, 0, tzinfo=UTC)
 
 
 class FakeLLMClient(LLMClient):

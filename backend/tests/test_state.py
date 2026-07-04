@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from app.graph.state import ExecutionMetadata, LifeGraphState
 from app.models import Activity, Memory, MemoryType, Timeline
 
-TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
+TS = datetime(2026, 7, 3, 9, 0, tzinfo=UTC)
 
 
 def test_state_initializes_from_raw_activity() -> None:

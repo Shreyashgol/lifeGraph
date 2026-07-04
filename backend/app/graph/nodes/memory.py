@@ -18,9 +18,7 @@ _logger = get_logger("app.graph.nodes.memory")
 
 
 class MemoryNode:
-    def __init__(
-        self, service: MemoryIntelligenceService, validator: MemoryValidator
-    ) -> None:
+    def __init__(self, service: MemoryIntelligenceService, validator: MemoryValidator) -> None:
         self.service = service
         self.validator = validator
 

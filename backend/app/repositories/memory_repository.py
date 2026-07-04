@@ -26,6 +26,7 @@ class MemoryRepository(BaseRepository[Memory]):
     def _to_row(self, model: Memory) -> MemoryTable:
         return MemoryTable(
             id=str(model.id),
+            user_id=self.user_id,
             type=model.type.value,
             statement=model.statement,
             confidence=model.confidence,
@@ -58,13 +59,17 @@ class MemoryRepository(BaseRepository[Memory]):
     def list_active(self) -> list[Memory]:
         """Return only ACTIVE memories — the ones that participate in reasoning."""
         statement = select(MemoryTable).where(
-            MemoryTable.status == MemoryStatus.ACTIVE.value
+            MemoryTable.user_id == self.user_id,
+            MemoryTable.status == MemoryStatus.ACTIVE.value,
         )
         return [self._to_domain(row) for row in self.session.exec(statement).all()]
 
     def list_by_type(self, memory_type: MemoryType) -> list[Memory]:
         """Return memories of a single category."""
-        statement = select(MemoryTable).where(MemoryTable.type == memory_type.value)
+        statement = select(MemoryTable).where(
+            MemoryTable.user_id == self.user_id,
+            MemoryTable.type == memory_type.value,
+        )
         return [self._to_domain(row) for row in self.session.exec(statement).all()]
 
     def accumulate_memory(
@@ -94,8 +99,7 @@ class MemoryRepository(BaseRepository[Memory]):
             confidence = _earned_confidence(count)
             status = (
                 MemoryStatus.ACTIVE
-                if count >= MEMORY_EVIDENCE_THRESHOLD
-                and confidence >= MEMORY_ACTIVATION_CONFIDENCE
+                if count >= MEMORY_EVIDENCE_THRESHOLD and confidence >= MEMORY_ACTIVATION_CONFIDENCE
                 else existing.status
             )
             updated = existing.model_copy(

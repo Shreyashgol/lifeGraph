@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from pydantic import ValidationError
@@ -24,7 +24,7 @@ from app.models import (
 )
 from app.models.enums import BehaviourCategory
 
-TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
+TS = datetime(2026, 7, 3, 9, 0, tzinfo=UTC)
 
 
 # --------------------------------------------------------------------------- #

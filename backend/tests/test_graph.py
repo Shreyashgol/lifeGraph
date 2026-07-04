@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy.pool import StaticPool
@@ -18,7 +18,7 @@ from app.models import Activity, Memory, MemoryStatus, MemoryType, Timeline, Use
 from app.services.timeline_service import TimelineService
 from app.validators import ActivityValidator, MemoryValidator
 
-TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
+TS = datetime(2026, 7, 3, 9, 0, tzinfo=UTC)
 
 
 class _FakeService:
@@ -233,7 +233,10 @@ async def test_activity_graph_executes_end_to_end() -> None:
         session_factory=lambda: Session(engine),
         checkpointer=None,
     )
-    initial = LifeGraphState(current_activity="Worked on LifeGraph backend for two hours.")
+    initial = LifeGraphState(
+        user_id="test-user",
+        current_activity="Worked on LifeGraph backend for two hours.",
+    )
     result = await graph.ainvoke(initial)
 
     data = result if isinstance(result, dict) else result.model_dump()
@@ -242,6 +245,8 @@ async def test_activity_graph_executes_end_to_end() -> None:
     # The ingest graph does NOT generate a summary — that's the on-demand graph.
     # (LangGraph omits untouched channels from the result dict.)
     assert data.get("daily_summary") is None
+    # Ensure no persist errors occurred
+    assert not data.get("errors")
 
 
 async def test_summary_graph_executes_end_to_end() -> None:
@@ -256,7 +261,10 @@ async def test_summary_graph_executes_end_to_end() -> None:
     )
     activity = _activity(project="LifeGraph", duration=120)
     timeline = Timeline(date=date(2026, 7, 3), activities=[activity], total_duration=120)
-    result = await graph.ainvoke(LifeGraphState(timeline=timeline))
+    result = await graph.ainvoke(LifeGraphState(user_id="test-user", timeline=timeline))
 
     data = result if isinstance(result, dict) else result.model_dump()
     assert data["daily_summary"] is not None
+    # Ensure no persist errors occurred
+    assert not data.get("errors")
+

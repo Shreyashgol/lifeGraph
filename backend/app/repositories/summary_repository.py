@@ -22,6 +22,7 @@ class SummaryRepository(BaseRepository[DailySummary]):
     def _to_row(self, model: DailySummary) -> SummaryTable:
         return SummaryTable(
             id=str(model.id),
+            user_id=self.user_id,
             date=model.date,
             overview=model.overview,
             timeline=model.timeline,
@@ -40,9 +41,7 @@ class SummaryRepository(BaseRepository[DailySummary]):
             timeline=row.timeline,
             metrics=row.metrics,
             insights=[Insight.model_validate(i) for i in row.insights],
-            recommendations=[
-                Recommendation.model_validate(r) for r in row.recommendations
-            ],
+            recommendations=[Recommendation.model_validate(r) for r in row.recommendations],
             tomorrow_focus=row.tomorrow_focus,
         )
 
@@ -50,7 +49,7 @@ class SummaryRepository(BaseRepository[DailySummary]):
         """Return the most recent summary for a given day, if any."""
         statement = (
             select(SummaryTable)
-            .where(SummaryTable.date == day)
+            .where(SummaryTable.user_id == self.user_id, SummaryTable.date == day)
             .order_by(SummaryTable.created_at.desc())
         )
         row = self.session.exec(statement).first()
@@ -58,19 +57,21 @@ class SummaryRepository(BaseRepository[DailySummary]):
 
     def get_latest(self) -> DailySummary | None:
         """Return the most recently written summary across all days."""
-        statement = select(SummaryTable).order_by(SummaryTable.created_at.desc())
+        statement = (
+            select(SummaryTable)
+            .where(SummaryTable.user_id == self.user_id)
+            .order_by(SummaryTable.created_at.desc())
+        )
         row = self.session.exec(statement).first()
         return self._to_domain(row) if row is not None else None
 
-    def list_dates(
-        self, *, start: date | None = None, end: date | None = None
-    ) -> list[date]:
+    def list_dates(self, *, start: date | None = None, end: date | None = None) -> list[date]:
         """Return the distinct days that have at least one summary, ascending.
 
         Powers the calendar view: only dates are loaded (not full summaries), so
         the client can highlight which days are already summarized.
         """
-        statement = select(SummaryTable.date).distinct()
+        statement = select(SummaryTable.date).where(SummaryTable.user_id == self.user_id).distinct()
         if start is not None:
             statement = statement.where(SummaryTable.date >= start)
         if end is not None:

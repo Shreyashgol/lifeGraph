@@ -45,8 +45,6 @@ class SummaryResponse(BaseModel):
             timeline=summary.timeline,
             metrics=summary.metrics,
             insights=[InsightView.from_domain(i) for i in summary.insights],
-            recommendations=[
-                RecommendationView.from_domain(r) for r in summary.recommendations
-            ],
+            recommendations=[RecommendationView.from_domain(r) for r in summary.recommendations],
             tomorrow_focus=summary.tomorrow_focus,
         )

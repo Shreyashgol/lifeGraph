@@ -6,6 +6,7 @@ Independent of FastAPI and SQLModel. The graph state (``LifeGraphState``) lives
 in ``app/graph`` because it is a graph model, not a domain model.
 """
 
+from app.models.account import AuthUser
 from app.models.activity import Activity
 from app.models.behaviour import BehaviourPattern
 from app.models.enums import (
@@ -25,6 +26,7 @@ from app.models.user import UserProfile
 
 __all__ = [
     "Activity",
+    "AuthUser",
     "BehaviourCategory",
     "BehaviourPattern",
     "DailySummary",

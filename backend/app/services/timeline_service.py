@@ -15,9 +15,7 @@ from app.models.timeline import Timeline
 class TimelineService:
     """Builds and updates the daily :class:`Timeline` from activities."""
 
-    def add_activity(
-        self, timeline: Timeline | None, activity: Activity, day: date
-    ) -> Timeline:
+    def add_activity(self, timeline: Timeline | None, activity: Activity, day: date) -> Timeline:
         existing = list(timeline.activities) if timeline else []
         activities = sorted([*existing, activity], key=lambda a: a.timestamp)
         return Timeline(

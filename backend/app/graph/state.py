@@ -60,6 +60,9 @@ class LifeGraphState(BaseModel):
     # Graph Builder
     execution_id: UUID = Field(default_factory=uuid4)
 
+    # Owner of this run — every persisted row is scoped to this user.
+    user_id: str | None = None
+
     # User Service
     user_profile: UserProfile | None = None
 

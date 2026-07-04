@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 from sqlmodel import Session
@@ -16,9 +16,10 @@ from app.models import (
     MemoryType,
     Priority,
     Recommendation,
-    Session as WorkSession,
     Timeline,
-    UserProfile,
+)
+from app.models import (
+    Session as WorkSession,
 )
 from app.repositories import (
     ActivityRepository,
@@ -28,7 +29,7 @@ from app.repositories import (
     UserRepository,
 )
 
-TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
+TS = datetime(2026, 7, 3, 9, 0, tzinfo=UTC)
 
 
 # --------------------------------------------------------------------------- #
@@ -36,40 +37,53 @@ TS = datetime(2026, 7, 3, 9, 0, tzinfo=timezone.utc)
 # --------------------------------------------------------------------------- #
 def test_user_repository_crud(session: Session) -> None:
     repo = UserRepository(session)
-    user = UserProfile(
+    # Test account creation
+    auth_user = repo.create_account(
+        email="test@example.com",
+        name="Shreyash",
+        hashed_password="mock-password-hash",
+    )
+    assert auth_user.email == "test@example.com"
+    assert auth_user.name == "Shreyash"
+
+    # Verify account get_by_id and get_by_email
+    fetched = repo.get_by_id(str(auth_user.id))
+    assert fetched is not None
+    assert fetched.email == "test@example.com"
+
+    fetched_email = repo.get_by_email("test@example.com")
+    assert fetched_email is not None
+    assert fetched_email.id == auth_user.id
+
+    # Profile starts as None before onboarding
+    assert repo.get_profile(str(auth_user.id)) is None
+
+    # Test profile upsert
+    profile = repo.upsert_profile(
+        user_id=str(auth_user.id),
         name="Shreyash",
         occupation="AI Engineer",
         timezone="Asia/Kolkata",
         goals=["Build AI products"],
+        interests=["AI"],
         active_projects=["LifeGraph"],
         preferences={"editor": "vscode"},
     )
+    assert profile.occupation == "AI Engineer"
+    assert profile.timezone == "Asia/Kolkata"
+    assert profile.goals == ["Build AI products"]
 
-    created = repo.create(user)
-    assert created == user
-
-    fetched = repo.get_by_id(user.id)
-    assert fetched is not None
-    assert fetched.goals == ["Build AI products"]
-    assert fetched.preferences == {"editor": "vscode"}
-
-    assert repo.get_first() is not None
-    assert len(repo.list()) == 1
-
-    updated = user.model_copy(update={"occupation": "Founding Engineer"})
-    assert repo.update(updated).occupation == "Founding Engineer"
-    assert repo.get_by_id(user.id).occupation == "Founding Engineer"
-
-    assert repo.delete(user.id) is True
-    assert repo.get_by_id(user.id) is None
-    assert repo.delete(user.id) is False
+    # Verify profile retrieval
+    fetched_profile = repo.get_profile(str(auth_user.id))
+    assert fetched_profile is not None
+    assert fetched_profile.occupation == "AI Engineer"
 
 
 # --------------------------------------------------------------------------- #
 # ActivityRepository
 # --------------------------------------------------------------------------- #
 def test_activity_repository_crud_and_roundtrip(session: Session) -> None:
-    repo = ActivityRepository(session)
+    repo = ActivityRepository(session, "test-user-id")
     activity = Activity(
         timestamp=TS,
         raw_text="Worked on auth",
@@ -89,7 +103,7 @@ def test_activity_repository_crud_and_roundtrip(session: Session) -> None:
 
 
 def test_activity_repository_list_by_day(session: Session) -> None:
-    repo = ActivityRepository(session)
+    repo = ActivityRepository(session, "test-user-id")
     today = Activity(timestamp=TS, raw_text="a", category="Deep Work", confidence=0.9)
     tomorrow = Activity(
         timestamp=TS + timedelta(days=1), raw_text="b", category="Meeting", confidence=0.9
@@ -105,7 +119,7 @@ def test_activity_repository_list_by_day(session: Session) -> None:
 # MemoryRepository
 # --------------------------------------------------------------------------- #
 def test_memory_repository_crud_and_enum_roundtrip(session: Session) -> None:
-    repo = MemoryRepository(session)
+    repo = MemoryRepository(session, "test-user-id")
     activity_id = Activity(
         timestamp=TS, raw_text="x", category="c", confidence=0.9
     ).id
@@ -128,7 +142,7 @@ def test_memory_repository_crud_and_enum_roundtrip(session: Session) -> None:
 
 
 def test_memory_repository_filters(session: Session) -> None:
-    repo = MemoryRepository(session)
+    repo = MemoryRepository(session, "test-user-id")
     active = Memory(
         type=MemoryType.GOAL,
         statement="Ship LifeGraph.",
@@ -151,7 +165,7 @@ def test_memory_repository_filters(session: Session) -> None:
 
 
 def test_memory_accumulator_earns_active_at_threshold(session: Session) -> None:
-    repo = MemoryRepository(session)
+    repo = MemoryRepository(session, "test-user-id")
 
     m1 = repo.accumulate_memory(
         memory_type=MemoryType.INTEREST, key="agentic ai", statement="Enjoys agentic AI.", activity_id=uuid4()
@@ -177,7 +191,7 @@ def test_memory_accumulator_earns_active_at_threshold(session: Session) -> None:
 
 
 def test_accumulate_project_is_a_typed_wrapper(session: Session) -> None:
-    repo = MemoryRepository(session)
+    repo = MemoryRepository(session, "test-user-id")
     m = repo.accumulate_project("LifeGraph", uuid4())
     assert m.type is MemoryType.PROJECT
     assert m.metadata["key"] == "lifegraph"
@@ -191,7 +205,7 @@ def test_accumulate_project_is_a_typed_wrapper(session: Session) -> None:
 # TimelineRepository
 # --------------------------------------------------------------------------- #
 def test_timeline_repository_upsert_and_nested(session: Session) -> None:
-    repo = TimelineRepository(session)
+    repo = TimelineRepository(session, "test-user-id")
     activity = Activity(
         timestamp=TS, raw_text="a", category="Deep Work", confidence=0.9, duration=120
     )
@@ -229,7 +243,7 @@ def test_timeline_repository_upsert_and_nested(session: Session) -> None:
 # SummaryRepository
 # --------------------------------------------------------------------------- #
 def test_summary_repository_crud_and_nested(session: Session) -> None:
-    repo = SummaryRepository(session)
+    repo = SummaryRepository(session, "test-user-id")
     summary = DailySummary(
         date=date(2026, 7, 3),
         overview="A focused day.",

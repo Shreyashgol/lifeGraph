@@ -27,12 +27,16 @@ class PersistNode:
         self.session_factory = session_factory
 
     async def __call__(self, state: LifeGraphState) -> dict:
+        if not state.user_id:
+            # Without an owner we cannot persist safely; skip writes.
+            return {"errors": [*state.errors, "persist: no user_id on state"]}
+        uid = state.user_id
         try:
             with self.session_factory() as session:
-                memory_repo = MemoryRepository(session)
+                memory_repo = MemoryRepository(session, uid)
                 activity = state.structured_activity
                 if activity is not None:
-                    ActivityRepository(session).create(activity)
+                    ActivityRepository(session, uid).create(activity)
                     # "Memory is earned": accrue evidence rather than inserting a
                     # fresh candidate each time. Projects come deterministically
                     # from the activity; other memories from the LLM proposals.
@@ -50,9 +54,9 @@ class PersistNode:
                             source="memory_node",
                         )
                 if state.timeline is not None:
-                    TimelineRepository(session).create(state.timeline)
+                    TimelineRepository(session, uid).create(state.timeline)
                 if state.daily_summary is not None:
-                    SummaryRepository(session).create(state.daily_summary)
+                    SummaryRepository(session, uid).create(state.daily_summary)
         except Exception as exc:  # persistence must not abort the graph
             _logger.warning("persist_failed", extra={"error": str(exc)})
             return {"errors": [*state.errors, f"persist: {exc}"]}

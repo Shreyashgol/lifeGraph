@@ -19,11 +19,13 @@ from app.models.timeline import Timeline
 
 
 class TimelineRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, user_id: str) -> None:
         self.session = session
+        self.user_id = user_id
 
     def _to_row(self, model: Timeline) -> TimelineTable:
         return TimelineTable(
+            user_id=self.user_id,
             date=model.date,
             activities=[a.model_dump(mode="json") for a in model.activities],
             sessions=[s.model_dump(mode="json") for s in model.sessions],
@@ -50,22 +52,24 @@ class TimelineRepository:
     update = create
 
     def get_by_date(self, day: date) -> Timeline | None:
-        row = self.session.get(TimelineTable, day)
+        row = self.session.get(TimelineTable, (self.user_id, day))
         return self._to_domain(row) if row is not None else None
 
     def list(self) -> list[Timeline]:
-        statement = select(TimelineTable).order_by(TimelineTable.date)
+        statement = (
+            select(TimelineTable)
+            .where(TimelineTable.user_id == self.user_id)
+            .order_by(TimelineTable.date)
+        )
         return [self._to_domain(row) for row in self.session.exec(statement).all()]
 
-    def list_dates(
-        self, *, start: date | None = None, end: date | None = None
-    ) -> list[date]:
+    def list_dates(self, *, start: date | None = None, end: date | None = None) -> list[date]:
         """Return the days that have a timeline (i.e. logged activity), ascending.
 
         Loads only the date column so the calendar can mark which days can be
         summarized without materializing every day's activities.
         """
-        statement = select(TimelineTable.date)
+        statement = select(TimelineTable.date).where(TimelineTable.user_id == self.user_id)
         if start is not None:
             statement = statement.where(TimelineTable.date >= start)
         if end is not None:
@@ -74,7 +78,7 @@ class TimelineRepository:
         return list(self.session.exec(statement).all())
 
     def delete(self, day: date) -> bool:
-        row = self.session.get(TimelineTable, day)
+        row = self.session.get(TimelineTable, (self.user_id, day))
         if row is None:
             return False
         self.session.delete(row)
